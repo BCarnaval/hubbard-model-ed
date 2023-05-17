@@ -22,7 +22,7 @@ impl FockState {
     /// Examples
     ///
     /// ```rust
-    /// let state0 = FockState { n_sites: 2, integer: 5};
+    /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// std::println!("{:?}", state0.integer_to_binary);
     /// ```
     pub fn integer_to_binary(&self) -> Vec<i32> {
@@ -49,8 +49,8 @@ impl FockState {
     /// Examples
     ///
     /// ```rust
-    /// let state0 = FockState { n_sites: 2, integer: 5};
-    /// let state1 = FockState { n_sites: 2, integer: 6};
+    /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
+    /// let state1 = FockState { n_sites: 2, integer: 6, is_null: false };
     /// std::println!("{}", state0.scalar(state1));
     /// ```
     fn scalar(&self, state: FockState) -> i32 {
@@ -71,7 +71,7 @@ impl FockState {
     /// Examples
     ///
     /// ```rust
-    /// let state0 = FockState { n_sites: 2, integer: 5};
+    /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// state0.create(1);
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
@@ -84,10 +84,12 @@ impl FockState {
         if index >= (self.n_sites as u32).pow(2) {
             std::println!("Cannot create fermion at index: {}", index);
             std::process::exit(1);
+
         // Verifying if a fermion if already at position 'index' in state
         } else if self.integer_to_binary()[index as usize] == 1 || self.is_null {
             to_null = true;
             new_state = 0;
+
         // Updating Fock state integer after creating fermion
         } else {
             new_state += (2 as i32).pow(index);
@@ -104,7 +106,7 @@ impl FockState {
     /// Examples
     ///
     /// ```rust
-    /// let state0 = FockState { n_sites: 2, integer: 5};
+    /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// state0.destroy(1);
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
@@ -117,10 +119,12 @@ impl FockState {
         if index >= (self.n_sites as u32).pow(2) {
             std::println!("Cannot create fermion at index: {}", index);
             std::process::exit(1);
+
         // Verifying if no fermions are at position 'index' in state
         } else if self.integer_to_binary()[index as usize] == 0 || self.is_null {
             to_null = true;
             new_state = 0;
+
         // Updating Fock state integer after destroying fermion
         } else {
             new_state -= (2 as i32).pow(index);
@@ -137,7 +141,7 @@ impl FockState {
     /// Examples
     ///
     /// ```rust
-    /// let state0 = FockState { n_sites: 2, integer: 5};
+    /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// state0.number(1);
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
@@ -150,6 +154,8 @@ impl FockState {
         if index >= (self.n_sites as u32).pow(2) {
             std::println!("Fermion cannot be at index: {}", index);
             std::process::exit(1);
+
+        // Verifiying if a fermion at site 'index' or if state is null
         } else if self.integer_to_binary()[index as usize] == 0 || self.is_null {
             new_state = 0;
             to_null = true;
@@ -172,17 +178,24 @@ pub struct Hubbard {
 
 impl Hubbard {
     pub fn interaction_term(&self, state0: i32, state1: i32) -> i32 {
+        // Initializing matrix element
         let mut coefficient: i32 = 0;
+
+        // Initializing 'bra'
         let state0: FockState = FockState {
             n_sites: self.n_sites,
             integer: state0,
             is_null: false,
         };
+
+        // Initializing 'ket'
         let mut state1: FockState = FockState {
             n_sites: self.n_sites,
             integer: state1,
             is_null: false,
         };
+
+        // Main loop over number of sites in the cluster (i)
         for site in 0..self.n_sites as u32 {
             let mut inter_1: FockState = state1.number(site);
             let inter_2: FockState = inter_1.number(site + self.n_sites as u32);
@@ -192,19 +205,27 @@ impl Hubbard {
     }
 
     pub fn kinetic_term(&self, state0: i32, state1: i32) -> i32 {
+        // Initializing matrix element
         let mut coefficient: i32 = 0;
+
+        // Initializing 'bra'
         let state0: FockState = FockState {
             n_sites: self.n_sites,
             integer: state0,
             is_null: false,
         };
+
+        // Initializing 'ket'
         let mut state1: FockState = FockState {
             n_sites: self.n_sites,
             integer: state1,
             is_null: false,
         };
+
+        // Main loop over number of sites in the cluster (i, j)
         for site_i in 0..self.n_sites as u32 {
             for site_j in 0..self.n_sites as u32 {
+                // Removing 'on site' hoppings
                 if site_i != site_j {
                     // Kinetic term for spin 'up'
                     let mut kin_1_up: FockState = state1.destroy(site_j);
@@ -242,6 +263,7 @@ impl Hubbard {
                 // Building matrix row
                 row.push(coefficient)
             }
+            // Write row to data file
             hubbard_wtr.serialize(row).unwrap()
         }
     }
