@@ -4,6 +4,7 @@
 // shortcut.
 
 use crate::file_utils::init_file_writter;
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct FockState {
@@ -16,34 +17,6 @@ pub struct FockState {
 }
 
 impl FockState {
-    /// Converts the Fock state integer to vector containing
-    /// associated bits.
-    ///
-    /// Examples
-    ///
-    /// ```rust
-    /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
-    /// std::println!("{:?}", state0.integer_to_binary);
-    /// ```
-    pub fn integer_to_binary(&self) -> Vec<i32> {
-        // Initializing divided part and bits array
-        let mut divided: i32 = self.integer;
-        let configs: u32 = (2 as u32).pow(self.n_sites as u32);
-        let mut binary_vec: Vec<i32> = vec![0; configs as usize];
-
-        // Lopp while the 'divided' is different than 0
-        let mut idx: usize = 0;
-        while divided > 0 {
-            let remainder: i32 = divided % 2;
-            binary_vec[idx] = remainder;
-
-            // Updating the divided part using previous value
-            divided /= 2;
-            idx += 1;
-        }
-        binary_vec
-    }
-
     /// Defines the scalar product between FockState objects.
     ///
     /// Examples
@@ -53,14 +26,14 @@ impl FockState {
     /// let state1 = FockState { n_sites: 2, integer: 6, is_null: false };
     /// std::println!("{}", state0.scalar(state1));
     /// ```
-    fn scalar(&self, state: FockState) -> i32 {
+    fn scalar(&self, state: i32) -> i32 {
         // Scalar product initialization
         let mut scalar: i32 = 0;
 
         // Verifiying if orthogonal states
-        if self.is_null || state.is_null {
+        if self.is_null {
             scalar = 0;
-        } else if self.integer == state.integer {
+        } else if self.integer == state {
             scalar = 1;
         }
         scalar
@@ -75,29 +48,20 @@ impl FockState {
     /// state0.create(1);
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
-    fn create(&mut self, index: u32) -> FockState {
-        // Initializing new state binary number or status (null or not)
-        let mut to_null: bool = false;
-        let mut new_state: i32 = self.integer;
-
+    fn create(&mut self, index: u32) {
         // Verifiying if indexing isn't too long for Hilbert space
         if index >= (self.n_sites as u32).pow(2) {
             std::println!("Cannot create fermion at index: {}", index);
             std::process::exit(1);
 
         // Verifying if a fermion if already at position 'index' in state
-        } else if self.integer_to_binary()[index as usize] == 1 || self.is_null {
-            to_null = true;
-            new_state = 0;
+        } else if self.integer & (1 << index) != 0 || self.is_null {
+            self.is_null = true;
+            self.integer = 0;
 
         // Updating Fock state integer after creating fermion
         } else {
-            new_state += (2 as i32).pow(index);
-        }
-        FockState {
-            n_sites: self.n_sites,
-            integer: new_state,
-            is_null: to_null,
+            self.integer += (2 as i32).pow(index);
         }
     }
 
@@ -110,29 +74,20 @@ impl FockState {
     /// state0.destroy(1);
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
-    fn destroy(&mut self, index: u32) -> FockState {
-        // Initializing new state binary number or status (null or not)
-        let mut to_null: bool = false;
-        let mut new_state: i32 = self.integer;
-
+    fn destroy(&mut self, index: u32) {
         // Verifiying if indexing isn't too long for Hilbert space
         if index >= (self.n_sites as u32).pow(2) {
             std::println!("Cannot create fermion at index: {}", index);
             std::process::exit(1);
 
         // Verifying if no fermions are at position 'index' in state
-        } else if self.integer_to_binary()[index as usize] == 0 || self.is_null {
-            to_null = true;
-            new_state = 0;
+        } else if self.integer & (1 << index) == 0 || self.is_null {
+            self.is_null = true;
+            self.integer = 0;
 
         // Updating Fock state integer after destroying fermion
         } else {
-            new_state -= (2 as i32).pow(index);
-        }
-        FockState {
-            n_sites: self.n_sites,
-            integer: new_state,
-            is_null: to_null,
+            self.integer -= (2 as i32).pow(index);
         }
     }
 
@@ -145,25 +100,16 @@ impl FockState {
     /// state0.number(1);
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
-    fn number(&mut self, index: u32) -> FockState {
-        // Initializing new state binary number or status (null or not)
-        let mut to_null: bool = false;
-        let mut new_state: i32 = self.integer;
-
+    fn number(&mut self, index: u32) {
         // Verifiying if indexing isn't too long for Hilbert space
         if index >= (self.n_sites as u32).pow(2) {
             std::println!("Fermion cannot be at index: {}", index);
             std::process::exit(1);
 
         // Verifiying if a fermion at site 'index' or if state is null
-        } else if self.integer_to_binary()[index as usize] == 0 || self.is_null {
-            new_state = 0;
-            to_null = true;
-        }
-        FockState {
-            n_sites: self.n_sites,
-            integer: new_state,
-            is_null: to_null,
+        } else if self.integer & (1 << index) == 0 || self.is_null {
+            self.integer = 0;
+            self.is_null = true;
         }
     }
 }
@@ -177,67 +123,63 @@ pub struct Hubbard {
 }
 
 impl Hubbard {
-    pub fn interaction_term(&self, state0: i32, state1: i32) -> i32 {
+    pub fn interaction_term(&self, state_0: i32, state_1: i32) -> i32 {
         // Initializing matrix element
         let mut coefficient: i32 = 0;
 
-        // Initializing 'bra'
-        let state0: FockState = FockState {
-            n_sites: self.n_sites,
-            integer: state0,
-            is_null: false,
-        };
-
-        // Initializing 'ket'
-        let mut state1: FockState = FockState {
-            n_sites: self.n_sites,
-            integer: state1,
-            is_null: false,
-        };
-
         // Main loop over number of sites in the cluster (i)
         for site in 0..self.n_sites as u32 {
-            let mut inter_1: FockState = state1.number(site);
-            let inter_2: FockState = inter_1.number(site + self.n_sites as u32);
-            coefficient += self.u * state0.scalar(inter_2);
+            // Initializing 'ket'
+            let mut ket_state: FockState = FockState {
+                n_sites: self.n_sites,
+                integer: state_0,
+                is_null: false,
+            };
+
+            // Computing 'on site' interaction using number operator
+            ket_state.number(site);
+            ket_state.number(site + self.n_sites as u32);
+
+            // Updating matrix element value
+            coefficient += self.u * ket_state.scalar(state_1);
         }
         coefficient
     }
 
-    pub fn kinetic_term(&self, state0: i32, state1: i32) -> i32 {
+    pub fn kinetic_term(&self, state_0: i32, state_1: i32) -> i32 {
         // Initializing matrix element
         let mut coefficient: i32 = 0;
-
-        // Initializing 'bra'
-        let state0: FockState = FockState {
-            n_sites: self.n_sites,
-            integer: state0,
-            is_null: false,
-        };
-
-        // Initializing 'ket'
-        let mut state1: FockState = FockState {
-            n_sites: self.n_sites,
-            integer: state1,
-            is_null: false,
-        };
+        let sites: Vec<u32> = (0..self.n_sites as u32).collect();
 
         // Main loop over number of sites in the cluster (i, j)
-        for site_i in 0..self.n_sites as u32 {
-            for site_j in 0..self.n_sites as u32 {
-                // Removing 'on site' hoppings
-                if site_i != site_j {
-                    // Kinetic term for spin 'up'
-                    let mut kin_1_up: FockState = state1.destroy(site_j);
-                    let kin_2_up: FockState = kin_1_up.create(site_i);
-                    coefficient += self.t * state0.scalar(kin_2_up);
+        for perms in sites.iter().permutations(sites.len()).unique() {
+            // Defining neighbours coordinates using permutations
+            let site_i: u32 = *perms[0];
+            let site_j: u32 = *perms[1];
 
-                    // Kinetic term for spin 'down'
-                    let mut kin_1_down: FockState = state1.destroy(site_j + self.n_sites as u32);
-                    let kin_2_down: FockState = kin_1_down.create(site_i + self.n_sites as u32);
-                    coefficient += self.t * state0.scalar(kin_2_down);
-                }
-            }
+            // Initializing 'kets' (spin up & down)
+            let mut ket_state_up: FockState = FockState {
+                n_sites: self.n_sites,
+                integer: state_0,
+                is_null: false,
+            };
+
+            let mut ket_state_down: FockState = FockState {
+                n_sites: self.n_sites,
+                integer: state_0,
+                is_null: false,
+            };
+
+            // Kinetic term (spin up & down)
+            ket_state_up.destroy(site_j);
+            ket_state_up.create(site_i);
+
+            ket_state_down.destroy(site_j + self.n_sites as u32);
+            ket_state_down.create(site_i + self.n_sites as u32);
+
+            // Updating matrix element value (spin up & down)
+            coefficient += self.t * ket_state_down.scalar(state_1);
+            coefficient += self.t * ket_state_up.scalar(state_1);
         }
         coefficient
     }
