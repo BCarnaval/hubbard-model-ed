@@ -49,19 +49,16 @@ impl FockState {
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
     fn create(&mut self, index: u32) {
-        // Verifiying if indexing isn't too long for Hilbert space
-        if index >= (self.n_sites as u32).pow(2) {
-            std::println!("Cannot create fermion at index: {}", index);
-            std::process::exit(1);
+        // Defining binary mask
+        let mask: i32 = 1 << index;
 
         // Verifying if a fermion if already at position 'index' in state
-        } else if self.integer & (1 << index) != 0 || self.is_null {
+        if self.integer & mask != 0 || self.is_null {
             self.is_null = true;
-            self.integer = 0;
 
         // Updating Fock state integer after creating fermion
         } else {
-            self.integer += (2 as i32).pow(index);
+            self.integer ^= mask;
         }
     }
 
@@ -75,19 +72,16 @@ impl FockState {
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
     fn destroy(&mut self, index: u32) {
-        // Verifiying if indexing isn't too long for Hilbert space
-        if index >= (self.n_sites as u32).pow(2) {
-            std::println!("Cannot create fermion at index: {}", index);
-            std::process::exit(1);
+        // Defining binary mask
+        let mask: i32 = 1 << index;
 
         // Verifying if no fermions are at position 'index' in state
-        } else if self.integer & (1 << index) == 0 || self.is_null {
+        if self.integer & mask == 0 || self.is_null {
             self.is_null = true;
-            self.integer = 0;
 
         // Updating Fock state integer after destroying fermion
         } else {
-            self.integer -= (2 as i32).pow(index);
+            self.integer ^= mask;
         }
     }
 
@@ -101,14 +95,8 @@ impl FockState {
     /// std::println!("{:?}", state0.integer_to_binary());
     /// ```
     fn number(&mut self, index: u32) {
-        // Verifiying if indexing isn't too long for Hilbert space
-        if index >= (self.n_sites as u32).pow(2) {
-            std::println!("Fermion cannot be at index: {}", index);
-            std::process::exit(1);
-
         // Verifiying if a fermion at site 'index' or if state is null
-        } else if self.integer & (1 << index) == 0 || self.is_null {
-            self.integer = 0;
+        if self.integer & (1 << index) == 0 || self.is_null {
             self.is_null = true;
         }
     }

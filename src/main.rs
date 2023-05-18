@@ -12,13 +12,10 @@ use std::time::Instant;
 fn main() {
     let now = Instant::now();
     let hubbard_model = Hubbard {
-        n_sites: 6,
+        n_sites: 2,
         t: 1,
         u: 1,
     };
-    // for i in 0..16 {
-    //     println!("Coeff: {}", hubbard_model.interaction_term(i, i));
-    // }
     hubbard_model.get_hamiltonian();
     println!("Time elapsed: {:.2?}", now.elapsed());
 }
