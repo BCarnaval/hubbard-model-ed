@@ -3,6 +3,9 @@
 // or if you prefer to use your keyboard, you can use the "Ctrl + Enter"
 // shortcut.
 
+use std::{println, vec};
+
+use crate::array_utils::build_tri_up_array;
 use itertools::Itertools;
 
 #[derive(Debug)]
@@ -180,16 +183,41 @@ impl Hubbard {
         let mut idx: u32 = 0;
         let mut sub_states: Vec<u32> = vec![state];
 
+        // Matrix elements array
+        let mut coefficients: Vec<i32> = Vec::new();
+
         // Continue loop until substates aren't new
         while idx < sub_states.len() as u32 {
-            // Find first hopping states
-            let mut new_states: Vec<u32> = self.kinetic_term(sub_states[idx as usize]);
+            // On-site interaction coefficient
+            coefficients.push(self.interaction_term(sub_states[idx as usize]));
 
-            // Filter already obtained substates
-            new_states.retain(|i: &u32| !sub_states.contains(i));
-            sub_states.append(&mut new_states);
-            idx += 1
+            // Find first hopping states
+            let new_states: Vec<u32> = self.kinetic_term(sub_states[idx as usize]);
+            let mut filtered: Vec<u32> = new_states.clone();
+
+            // Update sub_states block by adding only new Fock states
+            filtered.retain(|i: &u32| !sub_states.contains(i));
+            sub_states.append(&mut filtered);
+
+            // Add needed dimensions to resultant matrix
+            if filtered.len() > 0 && idx > 0 {
+                coefficients.append(&mut vec![0; filtered.len()]);
+            }
+
+            // Kinetic terms
+            let cpcp = sub_states.iter().filter(|i: u32| i == state).collect();
+            for sub_state in cpcp {
+                if sub_state < state {
+                    continue;
+                } else {
+                    coefficients.append(&mut vec![self.t; new_states.len()]);
+                }
+            }
+
+            // Updating array parser
+            idx += 1;
         }
+        println!("{:?}", coefficients);
         sub_states
     }
 
