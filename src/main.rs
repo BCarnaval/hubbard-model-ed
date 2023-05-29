@@ -3,6 +3,7 @@
 // or if you prefer to use your keyboard, you can use the "Ctrl + Enter"
 // shortcut.
 
+mod array_utils;
 mod file_utils;
 mod fock_space;
 
@@ -14,7 +15,7 @@ fn main() {
     let hubbard_model = Hubbard {
         n_sites: 2,
         t: 1,
-        u: 1,
+        u: 2,
     };
     hubbard_model.get_hamiltonian();
     println!("Time elapsed: {:.2?}", now.elapsed());
