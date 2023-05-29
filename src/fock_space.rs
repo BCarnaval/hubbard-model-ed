@@ -3,14 +3,13 @@
 // or if you prefer to use your keyboard, you can use the "Ctrl + Enter"
 // shortcut.
 
-use crate::file_utils::init_file_writter;
 use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct FockState {
     // Public attributes
-    pub n_sites: i32,
-    pub integer: i32,
+    pub n_sites: u32,
+    pub integer: u32,
 
     // Private attributes
     is_null: bool,
@@ -26,7 +25,7 @@ impl FockState {
     /// let state1 = FockState { n_sites: 2, integer: 6, is_null: false };
     /// std::println!("{}", state0.scalar(state1));
     /// ```
-    fn scalar(&self, state: i32) -> i32 {
+    fn scalar(&self, state: u32) -> i32 {
         // Scalar product initialization
         let mut scalar: i32 = 0;
 
@@ -50,7 +49,7 @@ impl FockState {
     /// ```
     fn create(&mut self, index: u32) {
         // Defining binary mask
-        let mask: i32 = 1 << index;
+        let mask: u32 = 1 << index;
 
         // Verifying if a fermion if already at position 'index' in state
         if self.integer & mask != 0 || self.is_null {
@@ -73,7 +72,7 @@ impl FockState {
     /// ```
     fn destroy(&mut self, index: u32) {
         // Defining binary mask
-        let mask: i32 = 1 << index;
+        let mask: u32 = 1 << index;
 
         // Verifying if no fermions are at position 'index' in state
         if self.integer & mask == 0 || self.is_null {
@@ -105,18 +104,18 @@ impl FockState {
 #[derive(Debug)]
 pub struct Hubbard {
     // Public attributes
-    pub n_sites: i32,
+    pub n_sites: u32,
     pub t: i32,
     pub u: i32,
 }
 
 impl Hubbard {
-    pub fn interaction_term(&self, state_0: i32, state_1: i32) -> i32 {
+    pub fn interaction_term(&self, state_0: u32) -> i32 {
         // Initializing matrix element
         let mut coefficient: i32 = 0;
 
         // Main loop over number of sites in the cluster (i)
-        for site in 0..self.n_sites as u32 {
+        for site in 0..self.n_sites {
             // Initializing 'ket'
             let mut ket_state: FockState = FockState {
                 n_sites: self.n_sites,
@@ -126,18 +125,18 @@ impl Hubbard {
 
             // Computing 'on site' interaction using number operator
             ket_state.number(site);
-            ket_state.number(site + self.n_sites as u32);
+            ket_state.number(site + self.n_sites);
 
             // Updating matrix element value
-            coefficient += self.u * ket_state.scalar(state_1);
+            coefficient += self.u * ket_state.scalar(state_0);
         }
         coefficient
     }
 
-    pub fn kinetic_term(&self, state_0: i32, state_1: i32) -> i32 {
-        // Initializing matrix element
-        let mut coefficient: i32 = 0;
-        let sites: Vec<u32> = (0..self.n_sites as u32).collect();
+    pub fn kinetic_term(&self, state_0: u32) -> Vec<u32> {
+        // Initializing subspace states
+        let mut sub_states: Vec<u32> = Vec::new();
+        let sites: Vec<u32> = (0..self.n_sites).collect();
 
         // Main loop over number of sites in the cluster (i, j)
         for perms in sites.iter().permutations(sites.len()).unique() {
@@ -146,55 +145,75 @@ impl Hubbard {
             let site_j: u32 = *perms[1];
 
             // Initializing 'kets' (spin up & down)
-            let mut ket_state_up: FockState = FockState {
+            let mut ket_up: FockState = FockState {
                 n_sites: self.n_sites,
                 integer: state_0,
                 is_null: false,
             };
 
-            let mut ket_state_down: FockState = FockState {
+            let mut ket_down: FockState = FockState {
                 n_sites: self.n_sites,
                 integer: state_0,
                 is_null: false,
             };
 
             // Kinetic term (spin up & down)
-            ket_state_up.destroy(site_j);
-            ket_state_up.create(site_i);
+            ket_up.destroy(site_j);
+            ket_up.create(site_i);
 
-            ket_state_down.destroy(site_j + self.n_sites as u32);
-            ket_state_down.create(site_i + self.n_sites as u32);
+            ket_down.destroy(site_j + self.n_sites);
+            ket_down.create(site_i + self.n_sites);
 
-            // Updating matrix element value (spin up & down)
-            coefficient += self.t * ket_state_down.scalar(state_1);
-            coefficient += self.t * ket_state_up.scalar(state_1);
+            // Push new state inside subspace if not already there
+            if !sub_states.contains(&ket_up.integer) && !ket_up.is_null {
+                sub_states.push(ket_up.integer)
+            }
+            if !sub_states.contains(&ket_down.integer) && !ket_down.is_null {
+                sub_states.push(ket_down.integer)
+            }
         }
-        coefficient
+        sub_states
+    }
+
+    fn find_sub_block(&self, state: u32) -> Vec<u32> {
+        // Test index for new substates
+        let mut idx: u32 = 0;
+        let mut sub_states: Vec<u32> = vec![state];
+
+        // Continue loop until substates aren't new
+        while idx < sub_states.len() as u32 {
+            // Find first hopping states
+            let mut new_states: Vec<u32> = self.kinetic_term(sub_states[idx as usize]);
+
+            // Filter already obtained substates
+            new_states.retain(|i: &u32| !sub_states.contains(i));
+            sub_states.append(&mut new_states);
+            idx += 1
+        }
+        sub_states
     }
 
     pub fn get_hamiltonian(&self) {
-        // Data file initialization
-        let matrix_path = String::from("./Data/hubbard_hamiltonian.dat");
-        let mut hubbard_wtr = init_file_writter(&matrix_path, false);
+        // Vector containing the blocs of the matrix & already visited states
+        let mut visited: Vec<u32> = Vec::new();
+        let mut blocks: Vec<Vec<u32>> = Vec::new();
 
         // Main loop over Fock space states (4^(n_sites))
-        for state_i in 0..(4 as u32).pow(self.n_sites as u32) {
-            let mut row: Vec<i32> = Vec::new();
+        for state_i in 0..(4 as u32).pow(self.n_sites) {
+            // Verifying if the state was already used
+            if !visited.contains(&state_i) {
+                // State bank from 'state_i;
+                let sub_block: Vec<u32> = self.find_sub_block(state_i);
+                let mut filtered: Vec<u32> = sub_block.clone();
 
-            for state_j in 0..(4 as u32).pow(self.n_sites as u32) {
-                let mut coefficient: i32 = 0;
-
-                // Computing 'on site' interaction
-                coefficient += self.interaction_term(state_i as i32, state_j as i32);
-
-                // Computing 'hopping/kinetic' terms
-                coefficient += self.kinetic_term(state_i as i32, state_j as i32);
-
-                // Building matrix row
-                row.push(coefficient)
+                // Building already visited states list
+                filtered.retain(|i: &u32| !visited.contains(i));
+                visited.append(&mut filtered);
+                blocks.push(sub_block);
+            } else {
+                continue;
             }
-            // Write row to data file
-            hubbard_wtr.serialize(row).unwrap()
         }
+        println!("{:?}", blocks);
     }
 }
