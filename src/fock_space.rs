@@ -7,6 +7,8 @@ use std::{println, vec};
 
 use crate::array_utils::build_tri_up_array;
 use itertools::Itertools;
+use ndarray::Array2;
+use ndarray_linalg::{eigh, UPLO};
 
 #[derive(Debug)]
 pub struct FockState {
@@ -178,47 +180,50 @@ impl Hubbard {
         sub_states
     }
 
-    fn find_sub_block(&self, state: u32) -> Vec<u32> {
+    fn find_sub_block(&self, state: u32) -> (Vec<u32>, Vec<i32>, Vec<i32>) {
         // Test index for new substates
         let mut idx: u32 = 0;
         let mut sub_states: Vec<u32> = vec![state];
 
         // Matrix elements array
-        let mut coefficients: Vec<i32> = Vec::new();
+        let mut triangle_elems: Vec<i32> = Vec::new();
+        let mut diagonal_elems: Vec<i32> = Vec::new();
 
         // Continue loop until substates aren't new
         while idx < sub_states.len() as u32 {
-            // On-site interaction coefficient
-            coefficients.push(self.interaction_term(sub_states[idx as usize]));
+            let current_state: u32 = sub_states[idx as usize];
 
             // Find first hopping states
-            let new_states: Vec<u32> = self.kinetic_term(sub_states[idx as usize]);
+            let new_states: Vec<u32> = self.kinetic_term(current_state);
             let mut filtered: Vec<u32> = new_states.clone();
 
             // Update sub_states block by adding only new Fock states
+            // and adding needed dimensions to resultant matrix
             filtered.retain(|i: &u32| !sub_states.contains(i));
-            sub_states.append(&mut filtered);
-
-            // Add needed dimensions to resultant matrix
             if filtered.len() > 0 && idx > 0 {
-                coefficients.append(&mut vec![0; filtered.len()]);
+                triangle_elems.append(&mut vec![0; filtered.len()]);
             }
 
+            sub_states.append(&mut filtered);
+
+            // On-site interaction coefficient
+            diagonal_elems.push(self.interaction_term(current_state));
+
             // Kinetic terms
-            let cpcp = sub_states.iter().filter(|i: u32| i == state).collect();
-            for sub_state in cpcp {
-                if sub_state < state {
-                    continue;
+            let states_copy: Vec<&u32> =
+                sub_states.iter().filter(|i| **i > current_state).collect();
+            for sub_state in states_copy {
+                if !new_states.contains(sub_state) {
+                    triangle_elems.push(0);
                 } else {
-                    coefficients.append(&mut vec![self.t; new_states.len()]);
+                    triangle_elems.push(self.t);
                 }
             }
 
             // Updating array parser
             idx += 1;
         }
-        println!("{:?}", coefficients);
-        sub_states
+        (sub_states, diagonal_elems, triangle_elems)
     }
 
     pub fn get_hamiltonian(&self) {
@@ -231,7 +236,10 @@ impl Hubbard {
             // Verifying if the state was already used
             if !visited.contains(&state_i) {
                 // State bank from 'state_i;
-                let sub_block: Vec<u32> = self.find_sub_block(state_i);
+                let (sub_block, diag_elems, tri_elems) = self.find_sub_block(state_i);
+                let matrix: Array2<i32> = build_tri_up_array(diag_elems, tri_elems);
+                let (eig_vals, eig_vects) = matrix.eigh(UPLO::Upper).unwrap();
+                println!("Eigenvalues : {:?}\n", eig_vals);
                 let mut filtered: Vec<u32> = sub_block.clone();
 
                 // Building already visited states list

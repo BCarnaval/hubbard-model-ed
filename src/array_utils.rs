@@ -11,17 +11,21 @@ pub fn build_tri_up_array(diag: Vec<i32>, mut tri: Vec<i32>) -> Array2<i32> {
     let dim: usize = diag.len();
     let tri_number: i32 = (dim * (dim + 1) / 2) as i32;
 
-    if tri_number != tri.len() as i32 {
+    // Initializing upper triangle matrix by setting the diagonal
+    let mut diag_array: Array2<i32> = Array2::from_diag(&arr1(&diag));
+
+    if tri.len() == 0 {
+        diag_array
+    } else if (tri_number - dim as i32) != tri.len() as i32 {
         println!(
-            "Number of elements inside '{}' array does not match matrix dimension: {}.",
+            "Number of elements inside '{}' array is ({} / {}) does not match matrix dimension: {}.",
             String::from("tri"),
+            tri.len(),
+            tri_number - dim as i32,
             diag.len()
         );
         exit(1)
     } else {
-        // Initializing upper triangle matrix by setting the diagonal
-        let mut diag_array: Array2<i32> = Array2::from_diag(&arr1(&diag));
-
         // Loop over upper triangle indices
         for i in 0..diag.len() {
             diag_array
