@@ -5,10 +5,10 @@
 
 use std::{println, vec};
 
-use crate::array_utils::build_tri_up_array;
+use crate::array_utils::{build_tri_up_array, get_matrix_dimension};
 use itertools::Itertools;
+use lapack::sspevd;
 use ndarray::Array2;
-use ndarray_linalg::{eigh, UPLO};
 
 #[derive(Debug)]
 pub struct FockState {
@@ -28,7 +28,7 @@ impl FockState {
     /// ```rust
     /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// let state1 = FockState { n_sites: 2, integer: 6, is_null: false };
-    /// std::println!("{}", state0.scalar(state1));
+    /// println!("{}", state0.scalar(state1));
     /// ```
     fn scalar(&self, state: u32) -> i32 {
         // Scalar product initialization
@@ -50,7 +50,7 @@ impl FockState {
     /// ```rust
     /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// state0.create(1);
-    /// std::println!("{:?}", state0.integer_to_binary());
+    /// println!("{:?}", state0.integer_to_binary());
     /// ```
     fn create(&mut self, index: u32) {
         // Defining binary mask
@@ -73,7 +73,7 @@ impl FockState {
     /// ```rust
     /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// state0.destroy(1);
-    /// std::println!("{:?}", state0.integer_to_binary());
+    /// println!("{:?}", state0.integer_to_binary());
     /// ```
     fn destroy(&mut self, index: u32) {
         // Defining binary mask
@@ -96,7 +96,7 @@ impl FockState {
     /// ```rust
     /// let state0 = FockState { n_sites: 2, integer: 5, is_null: false };
     /// state0.number(1);
-    /// std::println!("{:?}", state0.integer_to_binary());
+    /// println!("{:?}", state0.integer_to_binary());
     /// ```
     fn number(&mut self, index: u32) {
         // Verifiying if a fermion at site 'index' or if state is null
@@ -145,6 +145,7 @@ impl Hubbard {
 
         // Main loop over number of sites in the cluster (i, j)
         for perms in sites.iter().permutations(sites.len()).unique() {
+            println!("{:?}", perms);
             // Defining neighbours coordinates using permutations
             let site_i: u32 = *perms[0];
             let site_j: u32 = *perms[1];
@@ -177,56 +178,86 @@ impl Hubbard {
                 sub_states.push(ket_down.integer)
             }
         }
+        sub_states.sort();
         sub_states
     }
 
-    fn find_sub_block(&self, state: u32) -> (Vec<u32>, Vec<i32>, Vec<i32>) {
+    pub fn find_sub_block(&self, state: u32) -> (Vec<u32>, Vec<f32>) {
         // Test index for new substates
         let mut idx: u32 = 0;
         let mut sub_states: Vec<u32> = vec![state];
 
         // Matrix elements array
-        let mut triangle_elems: Vec<i32> = Vec::new();
-        let mut diagonal_elems: Vec<i32> = Vec::new();
+        let mut elems: Vec<f32> = Vec::new();
 
         // Continue loop until substates aren't new
         while idx < sub_states.len() as u32 {
+            // Defining current sub state
             let current_state: u32 = sub_states[idx as usize];
 
             // Find first hopping states
             let new_states: Vec<u32> = self.kinetic_term(current_state);
             let mut filtered: Vec<u32> = new_states.clone();
-
-            // Update sub_states block by adding only new Fock states
-            // and adding needed dimensions to resultant matrix
             filtered.retain(|i: &u32| !sub_states.contains(i));
-            if filtered.len() > 0 && idx > 0 {
-                triangle_elems.append(&mut vec![0; filtered.len()]);
-            }
-
             sub_states.append(&mut filtered);
-
-            // On-site interaction coefficient
-            diagonal_elems.push(self.interaction_term(current_state));
 
             // Kinetic terms
             let states_copy: Vec<&u32> =
-                sub_states.iter().filter(|i| **i > current_state).collect();
+                sub_states.iter().filter(|i| **i < current_state).collect();
             for sub_state in states_copy {
                 if !new_states.contains(sub_state) {
-                    triangle_elems.push(0);
+                    elems.push(0.);
                 } else {
-                    triangle_elems.push(self.t);
+                    elems.push(self.t as f32);
                 }
             }
 
+            // On-site interaction coefficient
+            elems.push(self.interaction_term(current_state) as f32);
+
             // Updating array parser
+            sub_states.sort();
             idx += 1;
         }
-        (sub_states, diagonal_elems, triangle_elems)
+        (sub_states, elems)
     }
 
-    pub fn get_hamiltonian(&self) {
+    fn lapack_diagonalization(&self, lapack_ap_array: Vec<f32>) -> Vec<f32> {
+        // Matrix properties
+        let mut elements: Vec<f32> = lapack_ap_array.clone();
+        let array_order: i32 = get_matrix_dimension(lapack_ap_array.len()) as i32;
+        let mut eigen_vals: Vec<f32> = vec![0.0; array_order as usize];
+        let mut eigen_vects: Vec<f32> = Vec::with_capacity(array_order as usize);
+
+        // Working array memory
+        let lwork: i32 = 2 * array_order as i32;
+        let liwork: i32 = 1;
+        let mut work: Vec<f32> = Vec::with_capacity(lwork as usize);
+        let mut iwork: Vec<i32> = Vec::with_capacity(liwork as usize);
+
+        // Informative quantities
+        let mut info: i32 = 0;
+
+        unsafe {
+            sspevd(
+                b'N',
+                b'U',
+                array_order,
+                &mut elements,
+                &mut eigen_vals,
+                &mut eigen_vects,
+                1,
+                &mut work,
+                lwork,
+                &mut iwork,
+                liwork,
+                &mut info,
+            )
+        }
+        eigen_vals
+    }
+
+    pub fn get_eigenvalues(&self) {
         // Vector containing the blocs of the matrix & already visited states
         let mut visited: Vec<u32> = Vec::new();
         let mut blocks: Vec<Vec<u32>> = Vec::new();
@@ -236,10 +267,10 @@ impl Hubbard {
             // Verifying if the state was already used
             if !visited.contains(&state_i) {
                 // State bank from 'state_i;
-                let (sub_block, diag_elems, tri_elems) = self.find_sub_block(state_i);
-                let matrix: Array2<i32> = build_tri_up_array(diag_elems, tri_elems);
-                let (eig_vals, eig_vects) = matrix.eigh(UPLO::Upper).unwrap();
-                println!("Eigenvalues : {:?}\n", eig_vals);
+                let (sub_block, matrix_elems) = self.find_sub_block(state_i);
+                let eigen_vals: Vec<f32> = self.lapack_diagonalization(matrix_elems);
+                println!("{:?}", eigen_vals);
+
                 let mut filtered: Vec<u32> = sub_block.clone();
 
                 // Building already visited states list
@@ -250,6 +281,5 @@ impl Hubbard {
                 continue;
             }
         }
-        println!("{:?}", blocks);
     }
 }
