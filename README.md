@@ -16,8 +16,4 @@ This repository contains an exact diagonalization implementation for Hubbard mod
 
 [Usage](#usage)
 
-[Quick start](#quick-start)
-
-[Features](#features)
-
 [TODO](#todo)
