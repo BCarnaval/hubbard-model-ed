@@ -8,7 +8,7 @@ where $c^\dagger$ and $c$ are respectively the second quantization creation/anih
 
 ![Rust](https://img.shields.io/badge/rust-%23000000.svg?style=for-the-badge&logo=rust&logoColor=white)
   
-![LICENSE](https://img.shields.io/github/license/BCarnaval/hubbard_model_ed?color=blue&style=for-the-badge) ![release](https://img.shields.io/github/v/tag/BCarnaval/hubbard_model_ed?color=%23FF7F50&style=for-the-badge)
+![Build](https://img.shields.io/github/actions/workflow/status/BCarnaval/hubbard_model_ed/rust.yml?color=%23a3d1af&style=for-the-badge) ![LICENSE](https://img.shields.io/github/license/BCarnaval/hubbard_model_ed?color=blue&style=for-the-badge) ![release](https://img.shields.io/github/v/tag/BCarnaval/hubbard_model_ed?color=%23FF7F50&style=for-the-badge)
   
 </div>
 
