@@ -3,12 +3,10 @@
 // or if you prefer to use your keyboard, you can use the "Ctrl + Enter"
 // shortcut.
 
-use std::{println, vec};
-
-use crate::array_utils::{build_tri_up_array, get_matrix_dimension};
 use itertools::Itertools;
-use lapack::sspevd;
-use ndarray::Array2;
+use std::vec;
+
+use crate::{array_utils::lapack_diagonalization, file_utils::init_file_writter};
 
 #[derive(Debug)]
 pub struct FockState {
@@ -30,15 +28,15 @@ impl FockState {
     /// let state1 = FockState { n_sites: 2, integer: 6, is_null: false };
     /// println!("{}", state0.scalar(state1));
     /// ```
-    fn scalar(&self, state: u32) -> i32 {
+    fn scalar(&self, state: u32) -> f32 {
         // Scalar product initialization
-        let mut scalar: i32 = 0;
+        let mut scalar: f32 = 0.;
 
         // Verifiying if orthogonal states
         if self.is_null {
-            scalar = 0;
+            scalar = 0.;
         } else if self.integer == state {
-            scalar = 1;
+            scalar = 1.;
         }
         scalar
     }
@@ -110,14 +108,16 @@ impl FockState {
 pub struct Hubbard {
     // Public attributes
     pub n_sites: u32,
-    pub t: i32,
-    pub u: i32,
+    pub t: f32,
+    pub u: f32,
 }
 
 impl Hubbard {
-    pub fn interaction_term(&self, state_0: u32) -> i32 {
+    /// Computes 'on-site' interaction for given Fock State using second
+    /// quantization number operator.
+    pub fn interaction_term(&self, state_0: u32) -> f32 {
         // Initializing matrix element
-        let mut coefficient: i32 = 0;
+        let mut coefficient: f32 = 0.;
 
         // Main loop over number of sites in the cluster (i)
         for site in 0..self.n_sites {
@@ -138,17 +138,20 @@ impl Hubbard {
         coefficient
     }
 
+    /// Computes first neighbours hoppings for given Fock State using second
+    /// quantization operators.
+    ///
+    /// It outputs a vector containing linked states for given initial Fock state.
     pub fn kinetic_term(&self, state_0: u32) -> Vec<u32> {
         // Initializing subspace states
         let mut sub_states: Vec<u32> = Vec::new();
         let sites: Vec<u32> = (0..self.n_sites).collect();
 
         // Main loop over number of sites in the cluster (i, j)
-        for perms in sites.iter().permutations(sites.len()).unique() {
-            println!("{:?}", perms);
+        for perm in sites.iter().permutations(2).unique() {
             // Defining neighbours coordinates using permutations
-            let site_i: u32 = *perms[0];
-            let site_j: u32 = *perms[1];
+            let site_i: u32 = *perm[0];
+            let site_j: u32 = *perm[1];
 
             // Initializing 'kets' (spin up & down)
             let mut ket_up: FockState = FockState {
@@ -182,6 +185,11 @@ impl Hubbard {
         sub_states
     }
 
+    /// Finds a block of the Hubbard hamiltonian using one Fock State at a time.
+    ///
+    /// It outputs a tuple in which we found all the states involved in the current
+    /// block  and the matrix element of the block sorted 'column-wise' as LAPACK would
+    /// recommend.
     pub fn find_sub_block(&self, state: u32) -> (Vec<u32>, Vec<f32>) {
         // Test index for new substates
         let mut idx: u32 = 0;
@@ -208,12 +216,12 @@ impl Hubbard {
                 if !new_states.contains(sub_state) {
                     elems.push(0.);
                 } else {
-                    elems.push(self.t as f32);
+                    elems.push(self.t);
                 }
             }
 
             // On-site interaction coefficient
-            elems.push(self.interaction_term(current_state) as f32);
+            elems.push(self.interaction_term(current_state));
 
             // Updating array parser
             sub_states.sort();
@@ -222,42 +230,15 @@ impl Hubbard {
         (sub_states, elems)
     }
 
-    fn lapack_diagonalization(&self, lapack_ap_array: Vec<f32>) -> Vec<f32> {
-        // Matrix properties
-        let mut elements: Vec<f32> = lapack_ap_array.clone();
-        let array_order: i32 = get_matrix_dimension(lapack_ap_array.len()) as i32;
-        let mut eigen_vals: Vec<f32> = vec![0.0; array_order as usize];
-        let mut eigen_vects: Vec<f32> = Vec::with_capacity(array_order as usize);
-
-        // Working array memory
-        let lwork: i32 = 2 * array_order as i32;
-        let liwork: i32 = 1;
-        let mut work: Vec<f32> = Vec::with_capacity(lwork as usize);
-        let mut iwork: Vec<i32> = Vec::with_capacity(liwork as usize);
-
-        // Informative quantities
-        let mut info: i32 = 0;
-
-        unsafe {
-            sspevd(
-                b'N',
-                b'U',
-                array_order,
-                &mut elements,
-                &mut eigen_vals,
-                &mut eigen_vects,
-                1,
-                &mut work,
-                lwork,
-                &mut iwork,
-                liwork,
-                &mut info,
-            )
-        }
-        eigen_vals
-    }
-
+    /// Outputs the eigenvalues of Hubbard hamiltonian by diagonalizing all
+    /// of it's blocks using LAPACK 'sspevd' Fortran implementation.
+    ///
+    /// The eigenvalues are saved and stored inside './Data/eigen_vals.csv'.
     pub fn get_eigenvalues(&self) {
+        // Data file initialization (csv)
+        let data_path: String = String::from("./Data/eigen_values.csv");
+        let mut eig_wtr: csv::Writer<std::fs::File> = init_file_writter(&data_path, false);
+
         // Vector containing the blocs of the matrix & already visited states
         let mut visited: Vec<u32> = Vec::new();
         let mut blocks: Vec<Vec<u32>> = Vec::new();
@@ -268,12 +249,11 @@ impl Hubbard {
             if !visited.contains(&state_i) {
                 // State bank from 'state_i;
                 let (sub_block, matrix_elems) = self.find_sub_block(state_i);
-                let eigen_vals: Vec<f32> = self.lapack_diagonalization(matrix_elems);
-                println!("{:?}", eigen_vals);
-
-                let mut filtered: Vec<u32> = sub_block.clone();
+                let (_success, eigen_vals): (i32, Vec<f32>) = lapack_diagonalization(matrix_elems);
+                eig_wtr.serialize(eigen_vals).unwrap();
 
                 // Building already visited states list
+                let mut filtered: Vec<u32> = sub_block.clone();
                 filtered.retain(|i: &u32| !visited.contains(i));
                 visited.append(&mut filtered);
                 blocks.push(sub_block);
@@ -281,5 +261,128 @@ impl Hubbard {
                 continue;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use std::assert_eq;
+
+    use crate::fock_space::{FockState, Hubbard};
+
+    #[test]
+    fn test_fock_scalar() {
+        // Test Fock state has form: |1 1 ; 1 1>
+        let test_state: FockState = FockState {
+            n_sites: 2,
+            integer: 15,
+            is_null: false,
+        };
+        // Testing for null scalar
+        let coefficient_0: f32 = test_state.scalar(0);
+        assert_eq!(0., coefficient_0);
+
+        // Testing for non zero scalar
+        let coefficient_1: f32 = test_state.scalar(15);
+        assert_eq!(1., coefficient_1);
+    }
+
+    #[test]
+    fn test_fock_create() {
+        // Test Fock state has form: |1 1 ; 1 0>
+        let mut test_state: FockState = FockState {
+            n_sites: 2,
+            integer: 7,
+            is_null: false,
+        };
+        // Testing for valid fermion creation
+        test_state.create(3);
+        assert_eq!(15, test_state.integer);
+
+        // Testing invalid fermion creation
+        test_state.create(0);
+        assert_eq!(true, test_state.is_null);
+    }
+
+    #[test]
+    fn test_fock_destroy() {
+        // Test Fock state has form: |1 1 ; 1 0>
+        let mut test_state: FockState = FockState {
+            n_sites: 2,
+            integer: 7,
+            is_null: false,
+        };
+        // Testing for valid fermion anihilation
+        test_state.destroy(0);
+        assert_eq!(6, test_state.integer);
+
+        // Testing for invalid fermion anihilation
+        test_state.destroy(3);
+        assert_eq!(true, test_state.is_null);
+    }
+
+    #[test]
+    fn test_fock_number() {
+        // Test Fock state has form: |1 1 ; 1 1>
+        let mut test_state: FockState = FockState {
+            n_sites: 2,
+            integer: 15,
+            is_null: false,
+        };
+        // Testing for existing fermion
+        test_state.number(0);
+        assert_eq!(15, test_state.integer);
+
+        // Testing for non-existing fermion
+        test_state.destroy(0);
+        test_state.number(0);
+        assert_eq!(true, test_state.is_null);
+    }
+
+    #[test]
+    fn test_hubbard_interaction() {
+        // Test hubbard instance
+        let test_model: Hubbard = Hubbard {
+            n_sites: 2,
+            t: 1.,
+            u: 2.,
+        };
+        assert_eq!(4., test_model.interaction_term(15));
+        assert_eq!(2., test_model.interaction_term(5));
+        assert_eq!(0., test_model.interaction_term(1));
+    }
+
+    #[test]
+    fn test_hubbard_hoppings() {
+        // Test hubbard instance
+        let test_model: Hubbard = Hubbard {
+            n_sites: 2,
+            t: 1.,
+            u: 2.,
+        };
+        let empty: Vec<u32> = Vec::new();
+        assert_eq!(empty, test_model.kinetic_term(0));
+        assert_eq!(vec![2], test_model.kinetic_term(1));
+        assert_eq!(vec![6, 9], test_model.kinetic_term(5));
+    }
+
+    #[test]
+    fn test_hubbard_blocks() {
+        // Test hubbard instance
+        let test_model: Hubbard = Hubbard {
+            n_sites: 3,
+            t: 1.,
+            u: 2.,
+        };
+        let sub_states: Vec<u32> = vec![9, 10, 12, 17, 18, 20, 33, 34, 36];
+        let elements: Vec<f32> = vec![
+            2., 1., 0., 1., 1., 0., 1., 0., 0., 0., 0., 1., 0., 1., 2., 0., 0., 1., 1., 1., 0., 1.,
+            0., 0., 1., 0., 0., 0., 0., 1., 0., 0., 1., 0., 1., 0., 0., 0., 1., 0., 0., 1., 1., 1.,
+            2.,
+        ];
+        let (states, elems): (Vec<u32>, Vec<f32>) = test_model.find_sub_block(9);
+        assert_eq!(sub_states, states);
+        assert_eq!(elements, elems);
     }
 }

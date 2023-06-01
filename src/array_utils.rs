@@ -1,8 +1,7 @@
-// This is a comment, and is ignored by the compiler.
-// You can test this code by clicking the "Run" button over there ->
-// or if you prefer to use your keyboard, you can use the "Ctrl + Enter"
-// shortcut.
-
+/// This module is used to define tools (functions) used on 1d arrays. For example,
+/// one can use the function 'build_tri_up_array(&array)' to debug the block generation
+/// because it provides a clean output that makes it easy to verify matrices.
+use lapack::sspevd;
 use ndarray::Array2;
 
 /// Computes the dimension (N) of an upper triangle matrix using the 1d array length
@@ -30,6 +29,7 @@ pub fn get_matrix_dimension(lapack_ap_length: usize) -> usize {
 /// let ap_array: Vec<f32> = vec![1., 2., 3., 4., 5., 6., 7., 8., 9., 10.];
 /// println!("Matrix A is defined in 2d by the array:\n{:?}", build_tri_up_array(&ap_array));
 /// ```
+#[allow(dead_code)]
 pub fn build_tri_up_array(matrix_elements: &Vec<f32>) -> Array2<f32> {
     // Verifying triangular number for matrix dimensions
     let matrix_dim: usize = get_matrix_dimension(matrix_elements.len());
@@ -47,12 +47,57 @@ pub fn build_tri_up_array(matrix_elements: &Vec<f32>) -> Array2<f32> {
     array
 }
 
+/// Diagonalization of upper triangular hermitian matrix using LAPACK 'sspevd'
+/// Fortran implementation.
+///
+/// Examples
+///
+/// ```rust
+/// let elements: Vec<f32> = vec![1., 0., 1., 0., 0., 1.];
+/// let (exit_code, eig_vals): (i32, Vec<f32>) = lapack_diagonalization(elements);
+/// println!("Exit code: {} and eigenvalues = {:?}", exit_code, eig_vals);
+/// ```
+pub fn lapack_diagonalization(lapack_ap_array: Vec<f32>) -> (i32, Vec<f32>) {
+    // Matrix properties
+    let mut elements: Vec<f32> = lapack_ap_array.clone();
+    let array_order: i32 = get_matrix_dimension(lapack_ap_array.len()) as i32;
+    let mut eigen_vals: Vec<f32> = vec![0.0; array_order as usize];
+    let mut eigen_vects: Vec<f32> = Vec::with_capacity(array_order as usize);
+
+    // Working array memory
+    let lwork: i32 = 2 * array_order as i32;
+    let liwork: i32 = 1;
+    let mut work: Vec<f32> = Vec::with_capacity(lwork as usize);
+    let mut iwork: Vec<i32> = Vec::with_capacity(liwork as usize);
+
+    // Informative quantities
+    let mut info: i32 = 0;
+
+    unsafe {
+        sspevd(
+            b'N',
+            b'U',
+            array_order,
+            &mut elements,
+            &mut eigen_vals,
+            &mut eigen_vects,
+            1,
+            &mut work,
+            lwork,
+            &mut iwork,
+            liwork,
+            &mut info,
+        )
+    }
+    (info, eigen_vals)
+}
+
 #[cfg(test)]
 mod tests {
     use ndarray::{arr2, Array2};
     use std::assert_eq;
 
-    use crate::array_utils::{build_tri_up_array, get_matrix_dimension};
+    use crate::array_utils::{build_tri_up_array, get_matrix_dimension, lapack_diagonalization};
 
     #[test]
     fn check_matrix_dimension() {
@@ -71,5 +116,12 @@ mod tests {
             [0., 0., 0., 10.],
         ]);
         assert_eq!(array, build_tri_up_array(&elements))
+    }
+
+    #[test]
+    fn check_lapack_sspevd() {
+        let elements: Vec<f32> = vec![1., 0., 1., 0., 0., 1.];
+        let output: (i32, Vec<f32>) = (0, vec![1., 1., 1.]);
+        assert_eq!(output, lapack_diagonalization(elements))
     }
 }
