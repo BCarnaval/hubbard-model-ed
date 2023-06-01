@@ -1,3 +1,5 @@
+/// Contains useful functions to generate and manage csv data files.
+/// This module is using the 'csv' crate.
 use std::error::Error;
 use std::fs::OpenOptions;
 
@@ -10,7 +12,8 @@ use std::fs::OpenOptions;
 /// let nrows = file_lenght(&path).unwrap();
 /// println!("File {} has {} lines", &path, nrows);
 /// ```
-fn _file_length(file_path: &String, headers: bool) -> Result<u64, Box<dyn Error>> {
+#[allow(dead_code)]
+fn file_length(file_path: &String, headers: bool) -> Result<u64, Box<dyn Error>> {
     let rdr = csv::ReaderBuilder::new()
         .has_headers(headers)
         .from_path(file_path)
@@ -45,6 +48,7 @@ pub fn init_file_writter(path: &String, has_headers: bool) -> csv::Writer<std::f
         .unwrap();
 
     let writter = csv::WriterBuilder::new()
+        .flexible(true)
         .has_headers(has_headers)
         .delimiter(b' ')
         .from_writer(file_writter);
