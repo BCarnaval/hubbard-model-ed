@@ -19,3 +19,17 @@ This repository contains an exact diagonalization implementation for Hubbard mod
 [Usage](#usage)
 
 [TODO](#todo)
+
+## Requirements
+
+## Installation
+
+## Usage
+
+## TODO
+
+- [ ] Complete the `README.md`
+- [ ] Include periodic boundary conditions to hoppings operator (phase correction)
+- [ ] Include parallel computing using [rayon](https://github.com/rayon-rs/rayon)
+- [x] Comment the code base
+- [x] Unit testing
