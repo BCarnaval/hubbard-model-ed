@@ -11,10 +11,10 @@ use std::time::Instant;
 fn main() {
     let now = Instant::now();
     let hubbard_model = Hubbard {
-        n_sites: 2,
+        n_sites: 3,
         t: 1.,
         u: 2.,
     };
-    hubbard_model.get_eigenvalues();
+    hubbard_model.find_sub_block(6);
     println!("Time elapsed: {:.2?}", now.elapsed());
 }
