@@ -6,10 +6,7 @@
 use itertools::Itertools;
 use std::vec;
 
-use crate::{
-    array_utils::{build_tri_up_array, lapack_diagonalization},
-    file_utils::init_file_writter,
-};
+use crate::{array_utils::lapack_diagonalization, file_utils::init_file_writter};
 
 #[derive(Debug)]
 pub struct FockState {
@@ -249,8 +246,10 @@ impl Hubbard {
             let states_copy: Vec<&i32> =
                 sub_states.iter().filter(|i| i < &&current_state).collect();
             for sub_state in states_copy {
+                // Verifying for any positive integer corresponding to add 't'
                 if new_states.iter().any(|&i| i == *sub_state) {
                     elems.push(self.t);
+                // Verifying for any negative integer corresponding to add 't'
                 } else if new_states.iter().any(|&i| i == -sub_state) {
                     elems.push(-self.t)
                 } else {
@@ -287,8 +286,6 @@ impl Hubbard {
             if !visited.contains(&state_i) {
                 // State bank from 'state_i;
                 let (sub_block, matrix_elems) = self.find_sub_block(state_i);
-
-                println!("{:?}\n", build_tri_up_array(&matrix_elems));
                 let (_success, eigen_vals): (i32, Vec<f32>) = lapack_diagonalization(matrix_elems);
                 eig_wtr.serialize(eigen_vals).unwrap();
 

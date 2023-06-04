@@ -11,7 +11,7 @@ use std::time::Instant;
 fn main() {
     let now = Instant::now();
     let hubbard_model = Hubbard {
-        n_sites: 3,
+        n_sites: 7,
         t: 1.,
         u: 2.,
     };
