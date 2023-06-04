@@ -4,9 +4,12 @@
 // shortcut.
 
 use itertools::Itertools;
-use std::{println, vec};
+use std::vec;
 
-use crate::{array_utils::lapack_diagonalization, file_utils::init_file_writter};
+use crate::{
+    array_utils::{build_tri_up_array, lapack_diagonalization},
+    file_utils::init_file_writter,
+};
 
 #[derive(Debug)]
 pub struct FockState {
@@ -215,7 +218,6 @@ impl Hubbard {
             }
         }
         sub_states.sort_by_key(|i| i.abs());
-        println!("{:?}", sub_states);
         sub_states
     }
 
@@ -236,33 +238,33 @@ impl Hubbard {
         while idx < sub_states.len() as u32 {
             // Defining current sub state
             let current_state: i32 = sub_states[idx as usize];
-            println!("{}", current_state);
 
             // Find first hopping states
             let new_states: Vec<i32> = self.kinetic_term(current_state);
-            let mut filtered: Vec<i32> = new_states.clone();
-            filtered.retain(|i: &i32| !sub_states.contains(&i.abs()));
+            let mut filtered: Vec<i32> = new_states.iter().map(|&i| i.abs()).collect();
+            filtered.retain(|i: &i32| !sub_states.contains(&i));
             sub_states.append(&mut filtered);
 
             // Kinetic terms
             let states_copy: Vec<&i32> =
                 sub_states.iter().filter(|i| i < &&current_state).collect();
             for sub_state in states_copy {
-                if !new_states.contains(sub_state) {
-                    elems.push(0.);
-                } else {
+                if new_states.iter().any(|&i| i == *sub_state) {
                     elems.push(self.t);
+                } else if new_states.iter().any(|&i| i == -sub_state) {
+                    elems.push(-self.t)
+                } else {
+                    elems.push(0.)
                 }
             }
 
             // On-site interaction coefficient
-            elems.push(self.interaction_term(current_state));
+            elems.push(self.interaction_term(current_state.abs()));
 
             // Updating array parser
             sub_states.sort_by_key(|i| i.abs());
             idx += 1;
         }
-        println!("\n{:?}", sub_states);
         (sub_states, elems)
     }
 
@@ -285,6 +287,8 @@ impl Hubbard {
             if !visited.contains(&state_i) {
                 // State bank from 'state_i;
                 let (sub_block, matrix_elems) = self.find_sub_block(state_i);
+
+                println!("{:?}\n", build_tri_up_array(&matrix_elems));
                 let (_success, eigen_vals): (i32, Vec<f32>) = lapack_diagonalization(matrix_elems);
                 eig_wtr.serialize(eigen_vals).unwrap();
 

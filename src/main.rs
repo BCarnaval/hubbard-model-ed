@@ -15,6 +15,6 @@ fn main() {
         t: 1.,
         u: 2.,
     };
-    hubbard_model.find_sub_block(6);
+    hubbard_model.get_eigenvalues();
     println!("Time elapsed: {:.2?}", now.elapsed());
 }
