@@ -31,7 +31,7 @@ where $c^\dagger$ and $c$ are respectively the second quantization creation/anih
 ## TODO
 
 - [ ] Complete the `README.md`
-- [ ] Include periodic boundary conditions to hoppings operator (phase correction)
+- [x] Include periodic boundary conditions to hoppings operator (phase correction)
 - [ ] Include parallel computing using [rayon](https://github.com/rayon-rs/rayon)
 - [x] Comment the code base
 - [x] Unit testing
