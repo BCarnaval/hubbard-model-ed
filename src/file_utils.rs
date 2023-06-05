@@ -1,5 +1,5 @@
-/// Contains useful functions to generate and manage csv data files.
-/// This module is using the 'csv' crate.
+// Contains useful functions to generate and manage csv data files.
+// This module is using the 'csv' crate.
 use std::error::Error;
 use std::fs::OpenOptions;
 

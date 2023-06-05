@@ -1,6 +1,6 @@
-/// This module is used to define tools (functions) used on 1d arrays. For example,
-/// one can use the function 'build_tri_up_array(&array)' to debug the block generation
-/// because it provides a clean output that makes it easy to verify matrices.
+// This module is used to define tools (functions) used on 1d arrays. For example,
+// one can use the function 'build_tri_up_array(&array)' to debug the block generation
+// because it provides a clean output that makes it easy to verify matrices.
 use lapack::sspevd;
 use ndarray::Array2;
 
