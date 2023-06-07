@@ -32,24 +32,19 @@ where $c^\dagger$ and $c$ are respectively the second quantization creation/anih
 
 I recommend having a version of `cargo >= 1.70.0` and [Rust](https://www.rust-lang.org/) compiler `rustc >= 1.70.0` to use this crate. If you don't know what version you have, run the following commands
 ```bash
-$ cargo version
-...
-$ rustc --version
-...
+$ cargo version && rustc --version
 ```
-If you want to update it anyways, just run the command
+If you want to update them anyways, just run the command
 ```bash
 $ rustup update
 ```
-and it will update/upgrade the version of your Rust compiler.
+and it will upgrade the version of your Rust compiler, package manager, documentation and etc.
 
 ### LAPACK and BLAS
 
 Users must also have a version of [LAPACK](https://www.netlib.org/lapack/) (Linear Algebra PACKage) and [BLAS](https://www.netlib.org/blas/) (Basic Linear Algebra Subprograms) on their computers. For Mac users, you can install it directly using [Homebrew](https://brew.sh/) and the commands
 ```bash
-$ brew install lapack
-...
-$ brew install openblas
+$ brew install lapack openblas
 ```
 For additionnal details on installation I suggest to check for online support such as: [linux](https://coral.ise.lehigh.edu/jild13/2016/07/27/install-lapack-and-blas-on-linux-based-systems/), and [windows](https://icl.utk.edu/lapack-for-windows/).
 
@@ -57,7 +52,7 @@ For additionnal details on installation I suggest to check for online support su
 
 To use the program, users should clone this repository on their computer using the command
 ```bash
-$ git clone https://github.com/BCarnaval/hubbard_model_ed ./somewhere/on/their/computer/hubbard_model_ed
+$ git clone https://github.com/BCarnaval/hubbard_model_ed ~/somewhere/hubbard_model_ed
 ```
 Then build the binairies using `cargo` by executing the command
 ```bash
