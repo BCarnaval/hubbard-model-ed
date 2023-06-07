@@ -12,7 +12,7 @@ where $c^\dagger$ and $c$ are respectively the second quantization creation/anih
 
 </div>
 
-## Table of contents
+# Table of contents
 
 - [Requirements](#requirements)
     - [Rust](#rust)
@@ -26,7 +26,7 @@ where $c^\dagger$ and $c$ are respectively the second quantization creation/anih
 
 - [Todo](#todo)
 
-## Requirements
+# Requirements
 
 ### Rust
 
@@ -48,7 +48,7 @@ $ brew install lapack openblas
 ```
 For additionnal details on installation I suggest to check for online support such as: [linux](https://coral.ise.lehigh.edu/jild13/2016/07/27/install-lapack-and-blas-on-linux-based-systems/), and [windows](https://icl.utk.edu/lapack-for-windows/).
 
-## Installation
+# Installation
 
 To use the program, users should clone this repository on their computer using the command
 ```bash
@@ -64,7 +64,7 @@ $ cargo test
 ```
 at the root of the project. If all the tests pass, you are ready to use the program!
 
-## Usage
+# Usage
 
 ### Compute eigenvalues
 
@@ -143,7 +143,7 @@ pub fn get_eigenvalues(&self) {
 ```
 and it will print all the differents blocks of the hamiltonian that are diagonalized to find the eigenvalues.
 
-## Todo
+# Todo
 
 - [x] Complete the `README.md`
 - [x] Include periodic boundary conditions to hoppings operator (phase correction)
