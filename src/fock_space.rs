@@ -1,7 +1,21 @@
-// This is a comment, and is ignored by the compiler.
-// You can test this code by clicking the "Run" button over there ->
-// or if you prefer to use your keyboard, you can use the "Ctrl + Enter"
-// shortcut.
+// FockState and Hubbard structs are definded in this module.
+//
+// FockState objects are essentially ket represented by the binary
+// representation of an integer. For example, we can write the ket
+//
+//                      | 1 0 0 ; 1 1 1 > = | 39 >
+//
+// using the conventionnal order for bits in the ket as
+//
+//   | n_1(up) n_2(up) n_3(up) ; n_1(down) n_2(down) n_3(down) >
+//
+// According to this convention, we define struct's methods such as the
+// creation, anihilation and number operators from second quantization
+// formalism.
+//
+// Hubbard objects are defined using the number of sites in spins chain.
+// Then, we can compute the kinetic term and the interaction term of the
+// hamiltonian using FockState objects and properties.
 
 use itertools::Itertools;
 use std::vec;

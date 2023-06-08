@@ -1,5 +1,6 @@
 // Main module. This is where one should create and solve the Hubbard
 // model for given parameters.
+
 mod array_utils;
 mod file_utils;
 mod fock_space;
