@@ -52,7 +52,7 @@ For additionnal details on installation I suggest to check for online support su
 
 To use the program, users should clone this repository on their computer using the command
 ```bash
-git clone https://github.com/BCarnaval/hubbard_model_ed ~/somewhere/hubbard_model_ed
+git clone https://github.com/BCarnaval/hubbard_model_ed
 ```
 Then build the binairies using `cargo` by executing the command
 ```bash
