@@ -20,7 +20,8 @@
 use itertools::Itertools;
 use std::vec;
 
-use crate::{array_utils::lapack_diagonalization, file_utils::init_file_writter};
+use crate::array_utils::lapack_diagonalization;
+use crate::file_utils::{init_file_writter, init_progress_bar};
 
 #[derive(Debug)]
 pub struct FockState {
@@ -290,6 +291,12 @@ impl Hubbard {
         let data_path: String = String::from("./Data/eigen_values.csv");
         let mut eig_wtr: csv::Writer<std::fs::File> = init_file_writter(&data_path, false);
 
+        // Progress bar
+        let pb = init_progress_bar(
+            String::from("Diagonalization"),
+            (4 as u64).pow(self.n_sites),
+        );
+
         // Vector containing the blocs of the matrix & already visited states
         let mut visited: Vec<i32> = Vec::new();
         let mut blocks: Vec<Vec<i32>> = Vec::new();
@@ -301,6 +308,8 @@ impl Hubbard {
                 // State bank from 'state_i;
                 let (sub_block, matrix_elems) = self.find_sub_block(state_i);
                 let (_success, eigen_vals): (i32, Vec<f32>) = lapack_diagonalization(matrix_elems);
+
+                // Write eigenvalues to text file
                 eig_wtr.serialize(eigen_vals).unwrap();
 
                 // Building already visited states list
@@ -308,8 +317,9 @@ impl Hubbard {
                 filtered.retain(|i: &i32| !visited.contains(i));
                 visited.append(&mut filtered);
                 blocks.push(sub_block);
+                pb.inc(1)
             } else {
-                continue;
+                pb.inc(1)
             }
         }
     }

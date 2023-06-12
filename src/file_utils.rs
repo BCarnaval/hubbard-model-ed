@@ -1,8 +1,31 @@
 // Contains useful functions to generate and manage csv data files.
 // This module is using the 'csv' crate.
 
+use indicatif::{ProgressBar, ProgressStyle};
 use std::error::Error;
 use std::fs::OpenOptions;
+
+/// Initialize a ProgressBar using 'indicatif' crate.
+///
+/// # Examples
+///
+/// ```rust
+/// let msg: String = String::from("A message");
+/// let iters: u64 = 1000;
+/// let pb = init_progress_bar(&msg, iters);
+/// ```
+pub fn init_progress_bar(msg: String, iters: u64) -> ProgressBar {
+    let pb = ProgressBar::new(iters);
+    pb.set_style(
+        ProgressStyle::with_template(&format!(
+            "[{}] {{elapsed_precise}} {{bar:40.cyan/blue}} {{pos:>2}}/{{len:2}}",
+            &msg
+        ))
+        .unwrap()
+        .progress_chars("=>-"),
+    );
+    pb
+}
 
 /// Returns text file number of row(s).
 ///
