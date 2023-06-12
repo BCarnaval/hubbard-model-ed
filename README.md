@@ -32,11 +32,11 @@ where $c^\dagger$ and $c$ are respectively the second quantization creation/anih
 
 I recommend having a version of `cargo >= 1.70.0` and [Rust](https://www.rust-lang.org/) compiler `rustc >= 1.70.0` to use this crate. If you don't know what version you have, run the following commands
 ```bash
-$ cargo version && rustc --version
+cargo version && rustc --version
 ```
 If you want to update them anyways, just run the command
 ```bash
-$ rustup update
+rustup update
 ```
 and it will upgrade the version of your Rust compiler, package manager, documentation and etc.
 
@@ -44,7 +44,7 @@ and it will upgrade the version of your Rust compiler, package manager, document
 
 Users must also have a version of [LAPACK](https://www.netlib.org/lapack/) (Linear Algebra PACKage) and [BLAS](https://www.netlib.org/blas/) (Basic Linear Algebra Subprograms) on their computers. For Mac users, you can install it directly using [Homebrew](https://brew.sh/) and the commands
 ```bash
-$ brew install lapack openblas
+brew install lapack openblas
 ```
 For additionnal details on installation I suggest to check for online support such as: [linux](https://coral.ise.lehigh.edu/jild13/2016/07/27/install-lapack-and-blas-on-linux-based-systems/), and [windows](https://icl.utk.edu/lapack-for-windows/).
 
@@ -52,15 +52,15 @@ For additionnal details on installation I suggest to check for online support su
 
 To use the program, users should clone this repository on their computer using the command
 ```bash
-$ git clone https://github.com/BCarnaval/hubbard_model_ed ~/somewhere/hubbard_model_ed
+git clone https://github.com/BCarnaval/hubbard_model_ed ~/somewhere/hubbard_model_ed
 ```
 Then build the binairies using `cargo` by executing the command
 ```bash
-$ cargo build -r
+cargo build -r
 ```
 at the root of the project. This command should use the build script to find LAPACK and BLAS and then link it inside the compiler. If the build succeed, you shoud also be able to verify if the unit tests are running properly on your machine by running the command
 ```bash
-$ cargo test
+cargo test
 ```
 at the root of the project. If all the tests pass, you are ready to use the program!
 
@@ -93,7 +93,7 @@ fn main() {
 ```
 The parameter named `n_sites` determines how many sites are considered in the chain, the parameter `t` the hopping amplitude for the first neighbors and `u` the on-site interaction amplitude. Once the parameters are setted, run the programm using
 ```bash
-$ cargo run -r
+cargo run -r
 ```
 to save the eigenvalues of the hamiltonian inside `./Data/eigen_values.csv` data file.
 
