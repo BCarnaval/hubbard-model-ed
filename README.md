@@ -1,6 +1,6 @@
 <div align="center">
 
-# hubbard_model_ed
+# hubbard-model-ed
 
 This repository contains an exact diagonalization implementation for the Hubbard model (in the approximation of 1D spins chain with first neigbohrs hopping terms using periodic boundary conditions) defined as
 $$H = H_t + H_U = -t\sum_{\langle i, j\rangle, \sigma}(c^\dagger_{i\sigma}c_{j\sigma} + h.c.) + U\sum_i n_{i\uparrow}n_{i\downarrow},$$
